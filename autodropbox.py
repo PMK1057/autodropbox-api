@@ -35,28 +35,20 @@ FIREBASE_CREDENTIALS_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON')
 FIREBASE_CREDENTIALS_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH')
 
 
-def _ensure_service_account_file() -> str:
-    """
-    Prépare le fichier de compte de service à partir des variables d'environnement.
-    Retourne le chemin du fichier à utiliser.
-    """
-    if FIREBASE_CREDENTIALS_JSON:
-        target_path = os.path.join(SCRIPT_DIR, 'service_account.json')
-        with open(target_path, 'w') as tmp_file:
-            tmp_file.write(FIREBASE_CREDENTIALS_JSON)
-        return target_path
-
-    if FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
-        return FIREBASE_CREDENTIALS_PATH
-
-    # Fallback local pour l'environnement de développement
-    return os.path.join(SCRIPT_DIR, 'serviceaccountkey.json')
-
-
-
 # 🔐 Charge la clé privée Firebase
-SERVICE_ACCOUNT_FILE = _ensure_service_account_file()
-cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
+google_creds_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON') or FIREBASE_CREDENTIALS_JSON
+if google_creds_json:
+    cred_info = json.loads(google_creds_json)
+    cred = credentials.Certificate(cred_info)
+    SERVICE_ACCOUNT_FILE = os.path.join(SCRIPT_DIR, 'service_account.json')
+    with open(SERVICE_ACCOUNT_FILE, 'w') as tmp_file:
+        json.dump(cred_info, tmp_file)
+elif FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
+    SERVICE_ACCOUNT_FILE = FIREBASE_CREDENTIALS_PATH
+    cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
+else:
+    SERVICE_ACCOUNT_FILE = os.path.join(SCRIPT_DIR, 'serviceaccountkey.json')
+    cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
 
 # ✅ Initialise Firebase si pas déjà fait
 if not firebase_admin._apps:
